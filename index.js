@@ -54,7 +54,9 @@ const injectLottie = `
  * @param {string} [opts.inject.style] - Optionally injected into a <style> tag within the document <head>
  * @param {string} [opts.inject.body] - Optionally injected into the document <body>
  * @param {object} [opts.browser] - Optional puppeteer instance to reuse
- * @param {object} [opts.progress] - Optional callback to report rendering progress, will be called with the following parameters: (frame, totalFrames)
+ * @param {object} [opts.startFrame] - Optional lottie-web initialSegment set segment for exporting specific frame
+ * @param {object} [opts.endFrame] - Optional lottie-web initialSegment set segment for exporting specific frame
+ *
  * @return {Promise}
  */
 module.exports = async (opts) => {
@@ -69,6 +71,8 @@ module.exports = async (opts) => {
     rendererSettings = { },
     style = { },
     inject = { },
+    startFrame = 0,
+    endFrame = 1000000,
     puppeteerOptions = { },
     ffmpegOptions = {
       crf: 20,
@@ -78,8 +82,7 @@ module.exports = async (opts) => {
     gifskiOptions = {
       quality: 80,
       fast: false
-    },
-    progress = undefined
+    }
   } = opts
 
   let {
@@ -218,7 +221,8 @@ ${inject.body || ''}
       loop: false,
       autoplay: false,
       rendererSettings: ${JSON.stringify(rendererSettings)},
-      animationData
+      animationData,
+      initialSegment:[${startFrame},${endFrame}+1]  //By default startframe=0 and endframe=1000000
     })
 
     duration = animation.getDuration()
@@ -365,13 +369,9 @@ ${inject.body || ''}
     // eslint-disable-next-line no-undef
     await page.evaluate((frame) => animation.goToAndStop(frame, true), frame)
     const screenshot = await rootHandle.screenshot({
-      path: (isApng || isMp4) ? undefined : frameOutputPath,
+      path: isMp4 ? undefined : frameOutputPath,
       ...screenshotOpts
     })
-    
-    if(progress) {
-      progress(frame, numFrames)
-    }
 
     // single screenshot
     if (!isMultiFrame) {
